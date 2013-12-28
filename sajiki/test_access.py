@@ -37,7 +37,7 @@ test_roles= [
     {'name' : 'publisher',
      'parent' : 'guest',
      'can' : [
-         ['crud', [['if-equals', 'user_id', 'id']]],
+         ['crud', [['if-equals', 'posts', 'user_id', 'id']]],
          ['read', ['comments', 'posts']]
          ]
      },
@@ -57,15 +57,48 @@ class AccessControlTest(unittest.TestCase):
 
     def setUp(self):
         self.acd = AccessControlDomain()
-        self.acd.update_role_model(test_roles)
+        self.acd.init_role_model(test_roles)
 
     def test_role_update(self):
         acd = AccessControlDomain()
-        acd.update_role_model(test_roles)
+        acd.init_role_model(test_roles)
 
     def test_subject_retrieval(self):
-        print self.acd.roles
         subj = self.acd.get_subject(test_mod)
+
+    def test_mod_can_modify_posts(self):
+        subj = self.acd.get_subject(test_mod)
+        self.assertTrue(subj.can('update', 'posts'))
+
+    def test_mod_cannot_modify_comments(self):
+        subj = self.acd.get_subject(test_mod)
+        self.assertFalse(subj.can('update', 'comments'))
+
+    def test_mod_can_delete_comments(self):
+        subj = self.acd.get_subject(test_mod)
+        self.assertTrue(subj.can('delete', 'comments'))
+
+    def test_user_cannot_modify_all_posts(self):
+        subj = self.acd.get_subject(test_user)
+        self.assertFalse(subj.can('modify', 'posts'))
+
+    def test_user_can_modify_own_posts(self):
+        subj = self.acd.get_subject(test_user)
+        self.assertTrue(subj.can('update', 'posts', {'user_id': 2}))
+
+    def test_user_cannot_modify_other_posts(self):
+        subj = self.acd.get_subject(test_user)
+        self.assertFalse(subj.can('update', 'posts', {'user_id': 3}))
+
+    def test_user_sees_users(self):
+        subj = self.acd.get_subject(test_user)
+        self.assertTrue(subj.can('read', 'users'))
+
+    def test_guest_sees_no_users_but_posts_and_comments(self):
+        subj = self.acd.get_subject(test_guest)
+        self.assertFalse(subj.can('read', 'users'))
+        self.assertTrue(subj.can('read', 'posts'))
+        self.assertTrue(subj.can('read', 'comments'))
 
 if __name__ == '__main__':
     unittest.main(exit=False)
