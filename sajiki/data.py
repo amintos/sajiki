@@ -20,6 +20,12 @@ class DataObject(object):
     def id(self):
         return self._id
 
+class DataImage(DataObject):
+
+    @property
+    def small_preview(self):
+        return self.previews['small']
+
 class GuestUser(DataObject):
     def __init__(self):
         self.login = 'Guest'

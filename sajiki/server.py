@@ -46,6 +46,11 @@ from users import *
 
 # --- Static file handling ---
 
+@get('/cache/<filename:re:.*\.(jpg|png|gif|ico)>')
+def thumbnails(filename):
+    # TODO: Access control here?
+    return static_file(filename, root='cache')
+
 @get('/<filename:re:.*\.js>')
 def javascripts(filename):
     return static_file(filename, root='static/js')

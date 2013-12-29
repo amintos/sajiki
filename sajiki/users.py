@@ -4,10 +4,12 @@ from helpers import view, session, can, do_login, do_logout
 import data
 
 @get('/')
-@view('index')
+@view('gallery')
 @session
 def index():
-    return {'hello': 'world'}
+    return {'gallery': 'Newest photos',
+            'photos': map(data.DataImage, data.images.find())}
+
 
 
 @get('/restricted')

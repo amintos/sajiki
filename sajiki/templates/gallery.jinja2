@@ -1,0 +1,28 @@
+{% extends "master.jinja2" %}
+
+{% block content %}
+
+<div class="container">
+    <div class="row">
+            <h1>{{ gallery }}</h1>
+    </div>
+    {% set offset = 0 %}
+    <div class="row">
+
+            {% for photo in photos %}
+
+            <div class="col-md-2">
+                <div class="thumbnail">
+                <img src="{{photo.small_preview}}">
+                </div>
+            </div>
+
+            {% set offset = offset + 1 %}
+            {% if offset >= 5 %}
+                {% set offset = 0 %}
+                </div><div class="row">
+            {% endif %}
+            {% endfor %}
+    </div>
+</div>
+{% endblock %}
