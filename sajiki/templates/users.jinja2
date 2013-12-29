@@ -1,0 +1,60 @@
+{% extends "master.jinja2" %}
+
+{% block content %}
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-10 col-md-offset-1">
+
+            <h1>Users</h1>
+            <table class="table table-striped">
+
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Roles</th>
+                    <th>&nbsp;</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                {% for user in users %}
+
+                    <tr>
+                        <td>{{user.login}}</td>
+                        <td>
+                            {% for role in user.roles %}
+                                <span class="badge">
+                                <a href="/roles/{{role}}">
+                                    {{role}}
+                                </a>
+                                <a href="/users/{{user.login}}/delete_role/{{role}}">
+                                    <span class="badge"><b>x</b></span>
+                                </a>
+                                </span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                          <a class="btn btn-default" href="/users/{{ user.login }}/edit">Edit</a>
+                          <a class="btn btn-default" href="/users/{{ user.login }}/add_role">Add Role</a>
+                          <a class="btn btn-danger" href="/users/{{ user.login }}/delete">Delete</a>
+                        </td>
+                    </tr>
+
+                {% endfor %}
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <td><a class="btn btn-primary" href="/users/new">Add User</a></td>
+                        <td></td>
+                        <td>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}

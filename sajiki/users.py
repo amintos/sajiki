@@ -1,7 +1,7 @@
 # --- USERS CONTROLLER ---
 from bottle import get, request, redirect
 from helpers import view, session, can, do_login, do_logout
-
+import data
 
 @get('/')
 @view('index')
@@ -45,4 +45,8 @@ def profile():
 
 
 
-
+@get('/users')
+@view('users')
+@session
+def index_users():
+    return {'users': data.users.find() }

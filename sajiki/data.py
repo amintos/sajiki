@@ -16,12 +16,18 @@ class DataObject(object):
     def __init__(self, record):
         self.__dict__.update(record)
 
+    @property
+    def id(self):
+        return self._id
+
 class GuestUser(DataObject):
     def __init__(self):
         self.login = 'Guest'
         self.name = 'Guest User'
         self.roles = []
 Guest = GuestUser()  # Singleton :P
+
+
 
 def init_images(base='./test-images'):
     print "Indexing images..."
