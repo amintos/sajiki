@@ -3,18 +3,21 @@
 #
 
 from collections import defaultdict
+from hashlib import sha1
+from json import dumps
 
 class Subject(object):
     """Represents an active entity. Obtains permissions from roles.
        Descriptor-field can contain a dictionary with the subjects's attributes
        to support attribute-based access control"""
 
-    def __init__(self, roles, ops_hierarchy, cache_id_field, descriptor=None):
+    def __init__(self, id, roles, ops_hierarchy, cache_id_field, descriptor=None):
         self.permissions = defaultdict(lambda: [])
         self.roles = roles
         self.descriptor = descriptor or dict()
         self.cache = set()
         self.cache_id_field = cache_id_field
+        self.id = id
 
         # optimization: compute permission closures sorted by operation
         for role in self.roles:
@@ -46,6 +49,14 @@ class Subject(object):
     def be_admin(self):
         self.__class__ = Admin
 
+    def debug(self):
+        """Return an exhaustive debug string with all permissions"""
+        result = ''
+        for operation, permissions in self.permissions.iteritems():
+            result += '\n' + operation + '\n' + '-' * len(operation) + '\n'
+            for perm in permissions:
+                result += repr(perm) + '\n'
+        return result
 
 def Admin(Subject):
     """Represents a superuser. Grants all permissions."""
@@ -56,9 +67,10 @@ def Admin(Subject):
 class Permission(object):
     """Permission to perform the said operation on a target"""
 
-    def __init__(self, operation, target):
+    def __init__(self, operation, target, role):
         self.operation = operation
         self.target = target
+        self.role = role
 
     def check(self, subject, resource_class, resource_descriptor):
         return self.target.check(subject, resource_class, resource_descriptor, self.operation)
@@ -66,7 +78,7 @@ class Permission(object):
     def resolve(self, hierarchy):
         """Compute the closure of the given operation (all sub-operations)"""
         if self.operation in hierarchy:
-            subsets = [Permission(sub_op, self.target).resolve(hierarchy)
+            subsets = [Permission(sub_op, self.target, self.role).resolve(hierarchy)
                         for sub_op in hierarchy[self.operation]]
             return reduce(set.union, subsets, set())        
         else:
@@ -80,7 +92,7 @@ class Permission(object):
                self.target == other.target
 
     def __repr__(self):
-        return "<Permission %s on %s>" % (self.operation, self.target)
+        return "<Permission %s on %s given by %s>" % (self.operation, self.target, self.role)
     __str__ = __repr__
 
 class JointPermission(object):
@@ -208,9 +220,18 @@ class Role(JointPermission):
         self.name = name
         self.parent = parent
 
+        # backward reference for displaying which permission was given by which role
+        for permission in self.permissions:
+            permission.role = self
+
     def resolve(self, hierarchy):
         return JointPermission.resolve(self, hierarchy).union(
             self.parent.resolve(hierarchy) if self.parent else set())
+
+    def __repr__(self):
+        return "<Role %s>" % self.name
+    __str__ = __repr__
+
 
 DEFAULT_OPS_HIERARCHY = {
     'write' : ['create', 'update', 'delete'],
@@ -225,6 +246,7 @@ class AccessControlDomain(object):
         self.targets = {}           # unique target constraints
         self.permissions = {}       # unique permissions
         self.cache_id_field = '_id' # unique resource identifier to cache permissions
+        self.subject_cache = {}
 
         # hierarchy of operation hypernyms
         self.ops_hierarchy = DEFAULT_OPS_HIERARCHY
@@ -267,7 +289,7 @@ class AccessControlDomain(object):
         if key in self.permissions:
             return self.permissions[key]
         else:
-            result = Permission(op, self.parse_target(d_target))
+            result = Permission(op, self.parse_target(d_target), None)
             self.permissions[key] = result
             return result
 
@@ -277,8 +299,8 @@ class AccessControlDomain(object):
         if key in self.targets:
             return self.targets[key]
         
-        if isinstance(d_target, str):
-            result = ResourceTarget(d_target)
+        if isinstance(d_target, str) or isinstance(d_target, unicode):
+            result = ResourceTarget(str(d_target))
         elif isinstance(d_target, bool):
             if d_target:
                 result = ResourceTarget(None)
@@ -328,12 +350,23 @@ class AccessControlDomain(object):
         It takes the form { 'operation_hypernym': ['op1', 'op2', ...], .. }"""
         self.ops_hierarchy = d_ops_hierarchy
 
-    def get_subject(self, descriptor):
+    def create_subject(self, descriptor):
         """Generates a subject from the description (containing a 'roles' field).
-        Subjects can be seen as access tokens. Their generation is expensive,
-        you better store them inside a session"""
+        Subjects can be seen as access tokens created at login time"""
         roles = [self.roles[role_name] for role_name in descriptor['roles']]
-        return Subject(roles, self.ops_hierarchy, self.cache_id_field, descriptor)
+        id = sha1(repr(descriptor)).hexdigest()
+        subject = Subject(id, roles, self.ops_hierarchy, self.cache_id_field, descriptor)
+        self.subject_cache[id] = subject
+        return subject
         
-        
-        
+    def get_subject_by_id(self, subject_id):
+        """Retrieve an already generated subject by its ID during a session."""
+        return self.subject_cache[subject_id]
+
+    def forget_subject(self, subject_id):
+        """Delete a subject from the cache at logout."""
+        del self.subject_cache[subject_id]
+
+    def validate_subject(self, subject_id):
+        """Checks whether the given subject ID is valid"""
+        return subject_id in self.subject_cache

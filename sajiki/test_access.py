@@ -89,6 +89,7 @@ class AccessControlTest(unittest.TestCase):
     def test_user_cannot_modify_other_posts(self):
         subj = self.acd.get_subject(test_user)
         self.assertFalse(subj.can('update', 'posts', {'user_id': 3}))
+        print subj.debug()
 
     def test_user_sees_users(self):
         subj = self.acd.get_subject(test_user)
@@ -99,6 +100,7 @@ class AccessControlTest(unittest.TestCase):
         self.assertFalse(subj.can('read', 'users'))
         self.assertTrue(subj.can('read', 'posts'))
         self.assertTrue(subj.can('read', 'comments'))
+
 
 if __name__ == '__main__':
     unittest.main(exit=False)

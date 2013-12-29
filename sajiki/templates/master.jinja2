@@ -1,0 +1,44 @@
+{% set organization = "Gallery" %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title> {% block title %}{% endblock %} </title>
+
+    <link href="bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="app.css" rel="stylesheet" type="text/css" />
+    <!-- <script src="jquery-1.8.0.min.js" type="text/javascript"></script> -->
+    <!-- <script src="flotr2.min.js" type="text/javascript"></script> -->
+</head>
+<body>
+
+    <nav class="navbar navbar-default XXXnavbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="/">{{ organization }}</a>
+            </div>
+            <div id="navbar-main" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
+                      <li><a href="/profile">{{ user.name }}</a></li>
+
+                    {% if logged_in %}
+
+                        <li><a href="/logout">Log Out</a></li>
+
+                    {% else %}
+
+                        <li><a href="/login">Log In</a></li>
+
+                    {% endif %}
+
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="content">
+    {% block content %}
+    {% endblock %}
+    </div>
+</body>
+</html>
