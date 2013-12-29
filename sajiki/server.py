@@ -1,41 +1,26 @@
-from bottle import app, hook, get, static_file, request, redirect
-from bottle import TEMPLATE_PATH
-from bottle import jinja2_view
+from bottle import hook, get, static_file, TEMPLATE_PATH, Jinja2Template
+from bottle import app as bottle_app
 from beaker.middleware import SessionMiddleware
-from access import AccessControlDomain
+
 import data
-from data import Guest, DataObject
+from helpers import load_access_control, setup_request
 
-from users import *
+# TEST DATA!
+if __name__ == '__main__':
+    #data.init_images()
+    data.init_users()
 
-#data.init_images()
 
-# Set up Role-Based Access Control
+# --- Load User Roles and Privileges ---
 
-data.init_users()
+access_control = load_access_control()
 
-access = AccessControlDomain()
-access.update_operations_hierarchy(list(data.operations.find()))
-access.init_role_model(list(data.roles.find()))
+# --- Configure Template Engine ---
 
-# Template Engine
+TEMPLATE_PATH[:] = ['./templates']
+Jinja2Template.settings = {'autoescape': True}
 
-TEMPLATE_PATH.append('./templates')                     # Lookup path
-
-def view(name):
-    return jinja2_view('%s.jinja2' % name)
-
-def session(func):
-    """Decorator which adds a bunch of session parameters to a handler's response.
-    Only applicable to view-decorated handlers!"""
-    def session_wrapper(*args, **kwargs):
-        result = func(*args, **kwargs)
-        result.update({'user': request.session['user']})
-        result.update({'logged_in': 'token' in request.session})
-        return result
-    return session_wrapper
-
-# Session Engine (= WSGI middleware)
+# --- Configure Session management ---
 
 session_opts = {
     'session.type': 'file',
@@ -43,25 +28,23 @@ session_opts = {
     'session.auto': True,
 }
 
-app = SessionMiddleware(app(), session_opts)
+app = SessionMiddleware(bottle_app(), session_opts)
 
-# Hooks
-# -> inject session variable into request
+# --- Hooks ---
+
 
 @hook('before_request')
-def setup_request():
-    request.session = request.environ['beaker.session']
-    if not 'user' in request.session:
-        request.session['user'] = Guest
+def before_request():
+    setup_request(access_control)
+
+# --- CONTROLLERS ---
+# Import controllers which depend on the previous setup:
+
+from errors import *
+from users import *
 
 
-print "[RBAC] Derived %s permissions from %s roles" % (
-    len(access.permissions), len(access.roles))
-
-# Request handlers (Controllers)
-
-
-# Static files
+# --- Static file handling ---
 
 @get('/<filename:re:.*\.js>')
 def javascripts(filename):
@@ -75,7 +58,7 @@ def stylesheets(filename):
 def images(filename):
     return static_file(filename, root='static/img')
 
-# Standalone config
+# --- Standalone deployment ---
 
 if __name__ == '__main__':
     from bottle import run

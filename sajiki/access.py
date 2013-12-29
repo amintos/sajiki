@@ -58,11 +58,23 @@ class Subject(object):
                 result += repr(perm) + '\n'
         return result
 
-def Admin(Subject):
+class Admin(Subject):
     """Represents a superuser. Grants all permissions."""
     def can(self, operation, resource_class=None, resource_descriptor=None):
         return True
 
+class NullSubjectClass(Subject):
+    """Represents an unauthorized subject"""
+    def __init__(self):
+        Subject.__init__(self, '', [], {}, '')
+
+    def can(self, operation, resource_class=None, resource_descriptor=None):
+        return False
+
+    def debug(self):
+        return "<Unauthorized User>"
+
+NullSubject = NullSubjectClass()     # Singleton!
 
 class Permission(object):
     """Permission to perform the said operation on a target"""
